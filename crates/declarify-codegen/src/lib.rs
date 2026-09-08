@@ -1,11 +1,12 @@
 //! Deterministic source generator for Declarify.
 //!
-//! DCL-0002 generates two of the six `src/generated/` subtrees described in
-//! `docs/02-architecture.md`: `resources/` (concrete resource alias and
-//! request/input types) and `application/` (repository trait, service trait,
-//! default CRUD service). `persistence/`, `http/`, `client/`, and `cli/`
-//! arrive with DCL-0003/0004/0005; this crate's `generate` will grow to emit
-//! them without changing the contract for callers.
+//! Generates three of the six `src/generated/` subtrees described in
+//! `docs/02-architecture.md` so far: `resources/` (concrete resource alias
+//! and request/input types), `application/` (repository trait, service
+//! trait, default CRUD service), and `persistence/` (fresh-schema SQL +
+//! `rusqlite`-backed repository). `http/`, `client/`, and `cli/` arrive with
+//! DCL-0004/0005; this crate's `generate` will grow to emit them without
+//! changing the contract for callers.
 //!
 //! This crate only renders file contents; it never touches the filesystem.
 //! `declarify-cli` owns writing to a temp directory, running `rustfmt`, and
@@ -13,6 +14,7 @@
 //! `docs/03-declaration-and-generation.md`, "Determinism and safety").
 
 mod application;
+mod persistence;
 mod resources;
 mod util;
 
@@ -50,6 +52,10 @@ pub fn generate(resources: &[ResourceSchema]) -> GeneratedTree {
             PathBuf::from("application").join(format!("{module}.rs")),
             application::render(resource),
         );
+        tree.insert(
+            PathBuf::from("persistence").join(format!("{module}.rs")),
+            persistence::render(resource),
+        );
         modules.push(module);
     }
 
@@ -59,6 +65,10 @@ pub fn generate(resources: &[ResourceSchema]) -> GeneratedTree {
     );
     tree.insert(
         PathBuf::from("application").join("mod.rs"),
+        render_submodule_list(&modules),
+    );
+    tree.insert(
+        PathBuf::from("persistence").join("mod.rs"),
         render_submodule_list(&modules),
     );
     tree.insert(PathBuf::from("mod.rs"), render_top_level_mod());
@@ -76,7 +86,7 @@ fn render_submodule_list(modules: &[String]) -> String {
 }
 
 fn render_top_level_mod() -> String {
-    format!("{OWNERSHIP_MARKER}\npub mod application;\npub mod resources;\n")
+    format!("{OWNERSHIP_MARKER}\npub mod application;\npub mod persistence;\npub mod resources;\n")
 }
 
 #[cfg(test)]
@@ -136,13 +146,28 @@ mod tests {
     }
 
     #[test]
-    fn resource_and_application_files_are_generated_per_resource() {
+    fn resource_application_and_persistence_files_are_generated_per_resource() {
         let schema = vec![note_schema()];
         let tree = generate(&schema);
         assert!(tree.contains_key(&PathBuf::from("resources/note.rs")));
         assert!(tree.contains_key(&PathBuf::from("application/note.rs")));
+        assert!(tree.contains_key(&PathBuf::from("persistence/note.rs")));
         assert!(tree.contains_key(&PathBuf::from("resources/mod.rs")));
         assert!(tree.contains_key(&PathBuf::from("application/mod.rs")));
+        assert!(tree.contains_key(&PathBuf::from("persistence/mod.rs")));
         assert!(tree.contains_key(&PathBuf::from("mod.rs")));
+    }
+
+    #[test]
+    fn persistence_file_uses_plural_as_table_name_and_expected_columns() {
+        let schema = vec![note_schema()];
+        let tree = generate(&schema);
+        let persistence = &tree[&PathBuf::from("persistence/note.rs")];
+        assert!(persistence.contains("CREATE TABLE IF NOT EXISTS notes"));
+        assert!(persistence.contains("spec_title TEXT NOT NULL"));
+        assert!(persistence.contains("spec_body TEXT NOT NULL"));
+        assert!(persistence.contains("status_indexed INTEGER NOT NULL"));
+        assert!(persistence.contains("pub struct SqliteNoteRepository"));
+        assert!(persistence.contains("impl NoteRepository for SqliteNoteRepository"));
     }
 }

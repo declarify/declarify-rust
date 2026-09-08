@@ -148,13 +148,72 @@
    `GeneratedTree`. Revisit only if a future ticket needs to compile-check
    generated code in isolation from a real consumer package.
 
+## DCL-0003 implementation choices (recorded)
+
+1. **SQLite crate: `rusqlite`**, with the `bundled` feature (statically
+   compiles SQLite from vendored source, so Linux/macOS/Windows builds need
+   no system SQLite package — only a C toolchain, which CI images already
+   carry) and the `chrono` feature (`ToSql`/`FromSql` for
+   `chrono::DateTime<Utc>`, so `created_at`/`updated_at` round-trip without
+   hand-written conversions). It was chosen over alternatives (e.g. `sqlx`)
+   because it is synchronous, matching the DCL-0002 decision that generated
+   repository/service traits are not `async fn`, and its `Connection`/
+   `Transaction` API maps directly onto "every mutation is transactional and
+   compares the expected revision in the SQL predicate"
+   (`docs/04-storage.md`).
+2. **Concurrency model: one `rusqlite::Connection` behind a `std::sync::Mutex`
+   per repository instance.** `rusqlite::Connection` is `Send` but not
+   `Sync`; wrapping it in a `Mutex` is the smallest way to satisfy the
+   repository trait's `Send + Sync` bound. This serializes all access to one
+   resource's table through one repository instance within a process — an
+   accepted Step 0 prototype limit (`IMPLEMENTATION.md`: "a prototype with
+   explicit extension boundaries, not a universal low-code platform"), not a
+   production pooling story. A connection pool (e.g. `r2d2_sqlite`) is a
+   candidate seam if a later scenario needs it, but nothing in Step 0's
+   defining scenarios does.
+3. **`u64` revision stored as SQLite `INTEGER` via an explicit `as i64`/
+   `as u64` cast at the repository boundary.** `rusqlite` does not implement
+   `ToSql`/`FromSql` for `u64` (SQLite's native integer type is signed
+   64-bit), so the generated code casts at read/write time rather than
+   picking a different Rust-level revision type; `declarify_core::Metadata
+   ::revision` stays `u64` because a revision counter is never meaningfully
+   negative.
+4. **Mutation pattern for `replace_spec`/`update_status`/`delete`**: a single
+   `UPDATE ... WHERE id = ? AND revision = ?` (or `DELETE ...`) inside an
+   explicit `rusqlite` transaction. Zero rows affected means either the ID
+   does not exist or the revision was stale; a follow-up
+   `SELECT EXISTS(...)` inside the *same* transaction disambiguates
+   `NotFound` from `Conflict`, matching `docs/04-storage.md` exactly:
+   "Updating zero rows after an existing-ID check maps deterministically to
+   `conflict` or `not_found`." A successful mutation re-`SELECT`s the full
+   row before committing, so the returned resource always reflects exactly
+   what was persisted.
+5. **List cursor is the literal last-returned resource ID**, used as a
+   keyset-pagination boundary (`WHERE (?cursor IS NULL OR id > ?cursor)
+   ORDER BY id ASC LIMIT ?`), not an encoded/opaque token. `docs/01-resource-
+   model.md` calls the cursor "opaque" from the API's point of view (callers
+   must treat it as a black box and pass it back verbatim, never construct or
+   parse one) — Step 0 does not additionally obfuscate it. Default page size
+   when `PageRequest.limit` is `None`: 50.
+6. **`labels`/`annotations` (`BTreeMap<String, String>`) are stored as
+   canonical JSON text via `serde_json`**, per `docs/04-storage.md` ("nested/
+   list/map values as canonical JSON text"). This is the first `serde_json`
+   dependency in a consumer's `Cargo.toml`, alongside `rusqlite`.
+7. **Table name is the resource's declared `plural`** (e.g. `notes`), one
+   table per resource, columns named directly for envelope fields plus
+   `spec_`/`status_`-prefixed columns per `Spec`/`Status` field in struct
+   declaration order — exactly `docs/04-storage.md`'s "SQL strategy" section.
+
 ## Still open (deferred)
 
-- **SQLite crate choice** (`rusqlite` vs. alternatives) is not yet decided.
-  It is out of scope until DCL-0003 ("SQLite vertical path") and must be
-  recorded here before that ticket's persistence code is written.
-- **Sync-repository/async-HTTP bridging strategy** (point 5 above) must be
+- **Sync-repository/async-HTTP bridging strategy** (DCL-0002 point 5) must be
   recorded here before DCL-0004 starts.
+- **Cross-platform CI** (`docs/07-scenarios-and-quality.md`: "CI covers
+  Linux, macOS, and Windows") has not been set up yet; DCL-0003's SQLite
+  vertical path has only been run and verified on macOS (this development
+  environment) via `cargo test --workspace`. No implementation-plan ticket
+  has yet asked for CI configuration; revisit at latest by DCL-0007
+  ("Consumer handoff").
 
 Do not create a general abstraction solely to keep either answer open.
 

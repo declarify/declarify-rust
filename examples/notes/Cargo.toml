@@ -12,3 +12,5 @@ declarify-core.workspace = true
 declarify-runtime.workspace = true
 serde.workspace = true
 chrono.workspace = true
+rusqlite.workspace = true
+serde_json.workspace = true
