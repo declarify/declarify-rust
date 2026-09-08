@@ -1,0 +1,17 @@
+[package]
+name = "declarify-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Declarify CLI: validate/generate/check."
+
+[[bin]]
+name = "declarify"
+path = "src/main.rs"
+
+[dependencies]
+declarify-schema.workspace = true
+declarify-codegen.workspace = true
+clap.workspace = true
+anyhow.workspace = true

@@ -1,0 +1,11 @@
+[package]
+name = "declarify-codegen"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Deterministic source generator for Declarify."
+
+[dependencies]
+declarify-core.workspace = true
+declarify-schema.workspace = true

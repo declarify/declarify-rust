@@ -1,0 +1,11 @@
+[package]
+name = "declarify-runtime"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Small, type-independent building blocks used by generated code: clocks and ID generators."
+
+[dependencies]
+chrono.workspace = true
+uuid.workspace = true

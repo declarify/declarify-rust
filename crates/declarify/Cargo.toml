@@ -1,0 +1,10 @@
+[package]
+name = "declarify"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+description = "Public facade crate for Declarify: re-exports the resource! declaration macro."
+
+[dependencies]
+declarify-macros.workspace = true
