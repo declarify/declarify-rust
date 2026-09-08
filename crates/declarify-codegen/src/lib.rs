@@ -1,13 +1,11 @@
 //! Deterministic source generator for Declarify.
 //!
-//! Generates five of the six `src/generated/` subtrees described in
-//! `docs/02-architecture.md` so far: `resources/` (concrete resource alias
-//! and request/input types), `application/` (repository trait, service
-//! trait, default CRUD service), `persistence/` (fresh-schema SQL +
-//! `rusqlite`-backed repository), `http/` (`axum` routes/handlers), and
-//! `client/` (typed async REST client). `cli/` arrives with DCL-0005; this
-//! crate's `generate` will grow to emit it without changing the contract for
-//! callers.
+//! Generates all six `src/generated/` subtrees described in
+//! `docs/02-architecture.md`: `resources/` (concrete resource alias and
+//! request/input types), `application/` (repository trait, service trait,
+//! default CRUD service), `persistence/` (fresh-schema SQL + `rusqlite`-
+//! backed repository), `http/` (`axum` routes/handlers), `client/` (typed
+//! async REST client), and `cli/` (`clap` subcommands calling the client).
 //!
 //! This crate only renders file contents; it never touches the filesystem.
 //! `declarify-cli` owns writing to a temp directory, running `rustfmt`, and
@@ -15,6 +13,7 @@
 //! `docs/03-declaration-and-generation.md`, "Determinism and safety").
 
 mod application;
+mod cli;
 mod client;
 mod http;
 mod persistence;
@@ -67,10 +66,21 @@ pub fn generate(resources: &[ResourceSchema]) -> GeneratedTree {
             PathBuf::from("client").join(format!("{module}.rs")),
             client::render(resource),
         );
+        tree.insert(
+            PathBuf::from("cli").join(format!("{module}.rs")),
+            cli::render(resource),
+        );
         modules.push(module);
     }
 
-    for dir in ["resources", "application", "persistence", "http", "client"] {
+    for dir in [
+        "resources",
+        "application",
+        "persistence",
+        "http",
+        "client",
+        "cli",
+    ] {
         tree.insert(
             PathBuf::from(dir).join("mod.rs"),
             render_submodule_list(&modules),
@@ -94,6 +104,7 @@ fn render_top_level_mod() -> String {
     format!(
         "{OWNERSHIP_MARKER}\n\
          pub mod application;\n\
+         pub mod cli;\n\
          pub mod client;\n\
          pub mod http;\n\
          pub mod persistence;\n\
@@ -161,7 +172,14 @@ mod tests {
     fn every_subtree_is_generated_per_resource() {
         let schema = vec![note_schema()];
         let tree = generate(&schema);
-        for dir in ["resources", "application", "persistence", "http", "client"] {
+        for dir in [
+            "resources",
+            "application",
+            "persistence",
+            "http",
+            "client",
+            "cli",
+        ] {
             assert!(
                 tree.contains_key(&PathBuf::from(dir).join("note.rs")),
                 "missing {dir}/note.rs"
@@ -172,6 +190,19 @@ mod tests {
             );
         }
         assert!(tree.contains_key(&PathBuf::from("mod.rs")));
+    }
+
+    #[test]
+    fn cli_file_declares_one_command_per_enabled_operation() {
+        let schema = vec![note_schema()];
+        let tree = generate(&schema);
+        let cli = &tree[&PathBuf::from("cli/note.rs")];
+        assert!(cli.contains("pub enum NoteCommand"));
+        for variant in ["Create", "Get", "List", "Update", "Status", "Delete"] {
+            assert!(cli.contains(variant), "missing `{variant}` command");
+        }
+        assert!(cli.contains("expected_revision: u64"));
+        assert!(cli.contains("pub async fn run"));
     }
 
     #[test]

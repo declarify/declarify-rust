@@ -5,33 +5,14 @@
 //! starts on SQLite") on an OS-assigned loopback port and drives it over
 //! real HTTP with `NoteClient` — no direct calls to the service/repository.
 
-use std::sync::Arc;
+mod support;
 
 use notes::domain::{NoteSpec, NoteStatus};
 use notes::generated::client::note::NoteClient;
-use notes::generated::persistence::note::{migrate, SqliteNoteRepository};
 use notes::generated::resources::note::{
     CreateNoteInput, ReplaceNoteSpecInput, UpdateNoteStatusInput,
 };
-
-async fn spawn_server() -> String {
-    let conn = rusqlite::Connection::open_in_memory().expect("open in-memory SQLite database");
-    migrate(&conn).expect("fresh-schema migration succeeds");
-    let repository = SqliteNoteRepository::new(conn);
-    let service: Arc<dyn notes::generated::application::note::NoteService> =
-        Arc::new(notes::composition::build_note_service(repository));
-    let router = notes::generated::http::note::routes(service);
-
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
-        .await
-        .expect("bind loopback port");
-    let addr = listener.local_addr().expect("local address");
-    tokio::spawn(async move {
-        axum::serve(listener, router).await.expect("server error");
-    });
-
-    format!("http://{addr}")
-}
+use support::spawn_server;
 
 #[tokio::test]
 async fn full_lifecycle_through_rest_and_typed_client() {

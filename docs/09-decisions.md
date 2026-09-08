@@ -252,13 +252,66 @@
    omits `None` fields from the query string rather than emitting `limit=`/
    `cursor=` with empty values. No manual query-string building was needed.
 
+## DCL-0005 implementation choices (recorded)
+
+1. **CLI command contract**: `create` reads a full `Create<Name>Input` JSON
+   document from stdin (it alone carries `name` alongside `spec`); `update`
+   (replace-spec) and `status` (update-status) read the *bare* `Spec`/
+   `Status` JSON document from stdin — not wrapped in `Replace<Name>SpecInput`
+   /`Update<Name>StatusInput` — and take `--expected-revision <u64>` as an
+   explicit flag; `delete` takes only `--expected-revision`. This was the
+   open choice `docs/05-rest-client-cli.md` left between "a flag or read
+   [the revision] from a supplied full resource document": a flag was
+   chosen because it needs no special-case parsing of "a full resource vs.
+   just its spec" and keeps stdin's shape uniform with what the command
+   actually mutates.
+2. **JSON output is always pretty-printed** (`serde_json::to_string_pretty`)
+   to stdout, one document per invocation. Still a single valid JSON
+   document per `docs/05-rest-client-cli.md` ("JSON input/output as the
+   stable automation interface"); no table rendering was added (explicitly
+   optional and out of scope per that doc).
+3. **A single non-zero exit code (`1`) for any CLI failure** — transport,
+   decode, or a structured API error alike — with the error's `Display`
+   text on stderr. `docs/05-rest-client-cli.md` requires only "non-zero,"
+   not a taxonomy of exit codes; a consumer needing to distinguish failure
+   kinds already gets that from parsing stderr or, more robustly, from
+   calling the typed client/REST API directly instead of shelling out.
+4. **Shared CLI building blocks live in `declarify-runtime::cli`**
+   (`CliError`, `read_json_stdin`, `print_json`), mirroring the DCL-0004
+   `declarify-runtime::http` precedent: resource-agnostic JSON I/O has
+   exactly one implementation, not one copy per generated command file.
+5. **The generated `cli` module never defines a binary itself** — only a
+   `#[derive(clap::Subcommand)] pub enum <Name>Command` plus an `async fn
+   run(command, &<Name>Client)`. The consumer's `[[bin]]` entry point
+   (`examples/notes/src/bin/notes.rs`) is handwritten: it owns `--base-url`
+   parsing (`docs/05-rest-client-cli.md`: "accepts the server base URL
+   explicitly and from configuration" — implemented as a `clap` flag with
+   an `env = "NOTES_BASE_URL"` fallback) and the stderr/exit-code reporting
+   in point 3. A second handwritten binary, `notes-server`, exists purely to
+   bind the generated `axum` router to a real socket over the generated
+   SQLite repository (`--db`/`--listen` flags, also env-configurable) — it
+   is composition, not generated code, per `docs/06-extension-model.md`.
+6. **Compiled CLI smoke test over a shell script as the primary check**:
+   `tests/cli_smoke.rs` spawns a real in-process `axum`/SQLite server and
+   drives the actual compiled `notes` binary
+   (`env!("CARGO_BIN_EXE_notes")`) as a subprocess for the full lifecycle,
+   satisfying `docs/07-scenarios-and-quality.md`'s DoD line verbatim ("CLI
+   smoke tests execute the compiled CLI against that server") in a way that
+   runs under plain `cargo test --workspace` with no external tools.
+   `scripts/notes-lifecycle.sh` is the same walkthrough as a literal shell
+   script against a separately-run `notes-server` process (satisfying the
+   ticket's exit-criterion wording just as literally), kept as a
+   human-facing artifact rather than a required check, since it depends on
+   `jq`/`curl` being installed.
+
 ## Still open (deferred)
 
 - **Cross-platform CI** (`docs/07-scenarios-and-quality.md`: "CI covers
-  Linux, macOS, and Windows") has not been set up yet; DCL-0003/DCL-0004 have
-  only been run and verified on macOS (this development environment) via
-  `cargo test --workspace`. No implementation-plan ticket has yet asked for
-  CI configuration; revisit at latest by DCL-0007 ("Consumer handoff").
+  Linux, macOS, and Windows") has not been set up yet; DCL-0003 through
+  DCL-0005 have only been run and verified on macOS (this development
+  environment) via `cargo test --workspace`. No implementation-plan ticket
+  has yet asked for CI configuration; revisit at latest by DCL-0007
+  ("Consumer handoff").
 
 Do not create a general abstraction solely to keep either answer open.
 
