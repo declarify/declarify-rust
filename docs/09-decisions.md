@@ -204,16 +204,61 @@
    `spec_`/`status_`-prefixed columns per `Spec`/`Status` field in struct
    declaration order — exactly `docs/04-storage.md`'s "SQL strategy" section.
 
+## DCL-0004 implementation choices (recorded)
+
+1. **Sync-repository/async-HTTP bridging: call the synchronous service
+   directly from the `async` handler, no `spawn_blocking`.** This was the
+   open question from DCL-0002. Generated handlers depend on the
+   `{Name}Service` trait, not on `Default{Name}Service`, so a consumer who
+   needs true non-blocking dispatch under real concurrent load can supply a
+   custom service implementation without touching generated code — the
+   existing extension seam already covers it. For Step 0's defining
+   scenarios (a local dev tool, SQLite-backed, one client at a time in the
+   tests), blocking the async task for the duration of a local SQLite call
+   is an accepted prototype simplification, not a production concurrency
+   story (`IMPLEMENTATION.md`: "a prototype with explicit extension
+   boundaries").
+2. **`axum` 0.8 path syntax**: routes use `{id}` (not the pre-0.8 `:id`).
+   `axum::routing::MethodRouter::new()` is built up conditionally per
+   resource so a route is only registered for methods the resource actually
+   enables (e.g. a resource without `delete` gets no `DELETE` method on its
+   `/{id}` route at all, rather than a handler that always errors).
+3. **`Arc<dyn {Name}Service>` as the router's `axum` state**, not a generic
+   `Router<S: {Name}Service>`. A trait object keeps the generated `routes()`
+   function's signature simple and still satisfies "generated HTTP handlers
+   depend on generated service traits, not the default service"
+   (`CLAUDE.md`); the small dynamic-dispatch cost is irrelevant next to a
+   network round trip.
+4. **Shared HTTP building blocks live in `declarify-runtime::http`, not
+   per-resource generated code**: `ApiError`/`ApiErrorBody` (the stable error
+   envelope and its `declarify_core::Error` -> status/code mapping),
+   `require_if_match` (the `If-Match: "<revision>"` parser), `ListQuery`, and
+   the client-side `ClientError`/`parse_json_response`/`expect_no_content`
+   helpers are resource-agnostic, so generating them per resource would be
+   pure duplication — exactly what `docs/02-architecture.md`'s "small runtime
+   crate may hold stable, type-independent building blocks ... shared HTTP
+   helpers" describes. `declarify-runtime` now depends on `declarify-core`,
+   `axum`, and `reqwest`.
+5. **Typed client crate: `reqwest`** (`json` feature, `rustls-tls` instead of
+   the system/OpenSSL-backed default, so no system TLS library is required
+   on any of Step 0's three target platforms), paired with `tokio` in
+   consumers for running async tests/servers. The client owns its own
+   `reqwest::Client` (constructible via `new(base_url)` or
+   `with_client(base_url, reqwest::Client)` for injected transport
+   configuration, per `docs/05-rest-client-cli.md`) and never imports
+   anything CLI-related.
+6. **List query parameters are the `PageRequest` struct serialized directly**
+   via `reqwest`'s `.query(&page)` (backed by `serde_urlencoded`), which
+   omits `None` fields from the query string rather than emitting `limit=`/
+   `cursor=` with empty values. No manual query-string building was needed.
+
 ## Still open (deferred)
 
-- **Sync-repository/async-HTTP bridging strategy** (DCL-0002 point 5) must be
-  recorded here before DCL-0004 starts.
 - **Cross-platform CI** (`docs/07-scenarios-and-quality.md`: "CI covers
-  Linux, macOS, and Windows") has not been set up yet; DCL-0003's SQLite
-  vertical path has only been run and verified on macOS (this development
-  environment) via `cargo test --workspace`. No implementation-plan ticket
-  has yet asked for CI configuration; revisit at latest by DCL-0007
-  ("Consumer handoff").
+  Linux, macOS, and Windows") has not been set up yet; DCL-0003/DCL-0004 have
+  only been run and verified on macOS (this development environment) via
+  `cargo test --workspace`. No implementation-plan ticket has yet asked for
+  CI configuration; revisit at latest by DCL-0007 ("Consumer handoff").
 
 Do not create a general abstraction solely to keep either answer open.
 

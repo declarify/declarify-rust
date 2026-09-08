@@ -1,12 +1,13 @@
 //! Deterministic source generator for Declarify.
 //!
-//! Generates three of the six `src/generated/` subtrees described in
+//! Generates five of the six `src/generated/` subtrees described in
 //! `docs/02-architecture.md` so far: `resources/` (concrete resource alias
 //! and request/input types), `application/` (repository trait, service
-//! trait, default CRUD service), and `persistence/` (fresh-schema SQL +
-//! `rusqlite`-backed repository). `http/`, `client/`, and `cli/` arrive with
-//! DCL-0004/0005; this crate's `generate` will grow to emit them without
-//! changing the contract for callers.
+//! trait, default CRUD service), `persistence/` (fresh-schema SQL +
+//! `rusqlite`-backed repository), `http/` (`axum` routes/handlers), and
+//! `client/` (typed async REST client). `cli/` arrives with DCL-0005; this
+//! crate's `generate` will grow to emit it without changing the contract for
+//! callers.
 //!
 //! This crate only renders file contents; it never touches the filesystem.
 //! `declarify-cli` owns writing to a temp directory, running `rustfmt`, and
@@ -14,6 +15,8 @@
 //! `docs/03-declaration-and-generation.md`, "Determinism and safety").
 
 mod application;
+mod client;
+mod http;
 mod persistence;
 mod resources;
 mod util;
@@ -56,21 +59,23 @@ pub fn generate(resources: &[ResourceSchema]) -> GeneratedTree {
             PathBuf::from("persistence").join(format!("{module}.rs")),
             persistence::render(resource),
         );
+        tree.insert(
+            PathBuf::from("http").join(format!("{module}.rs")),
+            http::render(resource),
+        );
+        tree.insert(
+            PathBuf::from("client").join(format!("{module}.rs")),
+            client::render(resource),
+        );
         modules.push(module);
     }
 
-    tree.insert(
-        PathBuf::from("resources").join("mod.rs"),
-        render_submodule_list(&modules),
-    );
-    tree.insert(
-        PathBuf::from("application").join("mod.rs"),
-        render_submodule_list(&modules),
-    );
-    tree.insert(
-        PathBuf::from("persistence").join("mod.rs"),
-        render_submodule_list(&modules),
-    );
+    for dir in ["resources", "application", "persistence", "http", "client"] {
+        tree.insert(
+            PathBuf::from(dir).join("mod.rs"),
+            render_submodule_list(&modules),
+        );
+    }
     tree.insert(PathBuf::from("mod.rs"), render_top_level_mod());
 
     tree
@@ -86,7 +91,14 @@ fn render_submodule_list(modules: &[String]) -> String {
 }
 
 fn render_top_level_mod() -> String {
-    format!("{OWNERSHIP_MARKER}\npub mod application;\npub mod persistence;\npub mod resources;\n")
+    format!(
+        "{OWNERSHIP_MARKER}\n\
+         pub mod application;\n\
+         pub mod client;\n\
+         pub mod http;\n\
+         pub mod persistence;\n\
+         pub mod resources;\n"
+    )
 }
 
 #[cfg(test)]
@@ -146,16 +158,52 @@ mod tests {
     }
 
     #[test]
-    fn resource_application_and_persistence_files_are_generated_per_resource() {
+    fn every_subtree_is_generated_per_resource() {
         let schema = vec![note_schema()];
         let tree = generate(&schema);
-        assert!(tree.contains_key(&PathBuf::from("resources/note.rs")));
-        assert!(tree.contains_key(&PathBuf::from("application/note.rs")));
-        assert!(tree.contains_key(&PathBuf::from("persistence/note.rs")));
-        assert!(tree.contains_key(&PathBuf::from("resources/mod.rs")));
-        assert!(tree.contains_key(&PathBuf::from("application/mod.rs")));
-        assert!(tree.contains_key(&PathBuf::from("persistence/mod.rs")));
+        for dir in ["resources", "application", "persistence", "http", "client"] {
+            assert!(
+                tree.contains_key(&PathBuf::from(dir).join("note.rs")),
+                "missing {dir}/note.rs"
+            );
+            assert!(
+                tree.contains_key(&PathBuf::from(dir).join("mod.rs")),
+                "missing {dir}/mod.rs"
+            );
+        }
         assert!(tree.contains_key(&PathBuf::from("mod.rs")));
+    }
+
+    #[test]
+    fn http_file_declares_the_stable_rest_paths() {
+        let schema = vec![note_schema()];
+        let tree = generate(&schema);
+        let http = &tree[&PathBuf::from("http/note.rs")];
+        assert!(http.contains("\"/api/v1/notes\""));
+        assert!(http.contains("\"/api/v1/notes/{id}\""));
+        assert!(http.contains("\"/api/v1/notes/{id}/status\""));
+        assert!(http.contains("StatusCode::CREATED"));
+        assert!(http.contains("StatusCode::NO_CONTENT"));
+        assert!(http.contains("require_if_match"));
+    }
+
+    #[test]
+    fn client_file_exposes_one_method_per_enabled_operation() {
+        let schema = vec![note_schema()];
+        let tree = generate(&schema);
+        let client = &tree[&PathBuf::from("client/note.rs")];
+        assert!(client.contains("pub struct NoteClient"));
+        for method in [
+            "pub async fn create",
+            "pub async fn get",
+            "pub async fn list",
+            "pub async fn replace_spec",
+            "pub async fn update_status",
+            "pub async fn delete",
+        ] {
+            assert!(client.contains(method), "missing `{method}`");
+        }
+        assert!(client.contains("If-Match"));
     }
 
     #[test]

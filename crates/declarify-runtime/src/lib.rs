@@ -1,9 +1,13 @@
-//! Small, type-independent building blocks that generated default services
-//! depend on but that consumers may replace via composition, per
-//! `docs/06-extension-model.md` ("identifier policy", "time policy").
+//! Small, type-independent building blocks that generated code depends on:
+//! the `Clock`/`IdGenerator` composition seams
+//! (`docs/06-extension-model.md`), and shared HTTP error/response handling
+//! used by every generated REST handler and typed client method
+//! (`docs/05-rest-client-cli.md`).
 //!
 //! Deliberately narrow: this crate must not grow into a place to hide
 //! business behavior that belongs in a handwritten service or validator.
+
+pub mod http;
 
 use chrono::{DateTime, Utc};
 
