@@ -67,9 +67,28 @@ cargo clippy --workspace --all-targets --all-features -- -D warnings
 cargo test --workspace
 ```
 
-Also run the repository's generated-code drift check and Markdown link check
-once those commands exist. For generated code, run compile fixtures and the
-relevant real-server/CLI scenario for the current ticket.
+`notes`'s `sqlite-backend`/`doltlite-backend` features are mutually
+exclusive (`rusqdoltlite` links under the same extern crate name as
+`rusqlite` — see `docs/09-decisions.md`, DCL-0006), so `--all-features`
+cannot include that package. Run instead:
+
+```text
+cargo clippy --workspace --exclude notes --all-targets --all-features -- -D warnings
+cargo clippy -p notes --all-targets -- -D warnings
+cargo clippy -p notes --all-targets --no-default-features --features doltlite-backend -- -D warnings
+cargo test --workspace
+cargo test -p notes --no-default-features --features doltlite-backend
+```
+
+Also run the repository's generated-code drift check and Markdown link check:
+
+```text
+cargo run -p declarify-cli -- check --package notes
+./scripts/check-markdown-links.sh
+```
+
+For generated code, run compile fixtures and the relevant real-server/CLI
+scenario for the current ticket.
 
 A ticket is not complete because code generation succeeds. The observable
 vertical scenario for that ticket must compile and execute.

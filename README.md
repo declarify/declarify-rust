@@ -71,6 +71,13 @@ A Rust application can:
 
 Declarify does not contain TabulaScripta concepts and does not dogfood itself.
 
+## Getting started
+
+[`examples/notes`](examples/notes/README.md) is both the executable
+specification and a runnable, step-by-step tutorial: declare, validate,
+generate, build, run the server, and drive it with the CLI — against
+SQLite or DoltLite.
+
 ## Documentation
 
 - [Vision and scope](docs/00-vision-and-scope.md)

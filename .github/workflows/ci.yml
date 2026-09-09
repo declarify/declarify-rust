@@ -1,0 +1,61 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  docs:
+    name: Markdown links
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./scripts/check-markdown-links.sh
+
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: "1.98.1"
+          components: rustfmt, clippy
+
+      - name: cargo fmt --check
+        run: cargo fmt --check
+
+      - name: clippy (workspace, except notes)
+        run: cargo clippy --workspace --exclude notes --all-targets --all-features -- -D warnings
+
+      - name: clippy (notes, sqlite-backend)
+        run: cargo clippy -p notes --all-targets -- -D warnings
+
+      # rusqdoltlite (docs/09-decisions.md, DCL-0006) supports Linux/macOS
+      # only; explicitly gated here, not silently skipped, per
+      # docs/07-scenarios-and-quality.md's DoD.
+      - name: clippy (notes, doltlite-backend)
+        if: matrix.os != 'windows-latest'
+        run: cargo clippy -p notes --all-targets --no-default-features --features doltlite-backend -- -D warnings
+
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+      - name: cargo test (notes, doltlite-backend)
+        if: matrix.os != 'windows-latest'
+        run: cargo test -p notes --no-default-features --features doltlite-backend
+
+      - name: declarify validate
+        run: cargo run -p declarify-cli -- validate --package notes
+
+      - name: declarify check (generated-code drift)
+        run: cargo run -p declarify-cli -- check --package notes

@@ -369,17 +369,56 @@
    lifecycle tests"). No separate `note_lifecycle_doltlite.rs` was added,
    since there is no separate backend-specific code path left to exercise.
 
+## DCL-0007 implementation choices (recorded)
+
+1. **Tutorial location: `examples/notes/README.md`**, not a numbered doc
+   under `docs/`. The numbered docs are explicitly "the complete Step 0
+   specification" (root `README.md`); a runnable, command-by-command
+   tutorial is a different kind of document and lives next to the code it
+   walks through, in the conventional per-example-crate `README.md`
+   location. The root `README.md` gained one link to it under a new
+   "Getting started" section.
+2. **Markdown link checker: a small `bash` script
+   (`scripts/check-markdown-links.sh`)**, not an added tool/dependency
+   (e.g. a `markdown-link-check` npm package, which would be the only
+   reason for this Rust-only repository to need Node at all). It walks
+   every `*.md` file, extracts Markdown links via `grep`/`sed`,
+   skips absolute URLs and pure in-page anchors, and verifies the
+   remaining relative targets exist on disk. It does not validate in-page
+   anchors (`#section`) resolve to a real heading — a deliberately smaller
+   check than a full tool would give, sufficient for this repository's
+   actual link shape (all cross-file, none deep-linking into a specific
+   heading).
+3. **CI added now, closing the item deferred since DCL-0003**:
+   `.github/workflows/ci.yml` runs the docs link check plus a
+   Linux/macOS/Windows matrix covering exactly the required-checks command
+   set now documented in `CLAUDE.md` (including the DCL-0006
+   `--all-features`-incompatible three-way clippy split and two-way test
+   split), with the `doltlite-backend` steps present but conditioned
+   (`if: matrix.os != 'windows-latest'`) rather than omitted, per
+   `docs/07-scenarios-and-quality.md`'s "explicitly gated ... rather than
+   silently skipped." **This workflow has not itself been executed** — this
+   development environment is macOS-only and has no way to run GitHub
+   Actions. It was authored to run exactly the same commands already
+   verified locally on macOS, but Linux/Windows execution is unverified
+   until it actually runs in CI (i.e. after this is pushed to a GitHub
+   remote). Flag any failure there as a real finding, not a rubber stamp.
+4. **No version tag scheme existed yet**; this ticket's exit criterion
+   ("TabulaScripta Knowledge can pin and consume Declarify") needs one to
+   pin against. Chose a plain annotated git tag, `v0.1.0`, at this ticket's
+   commit — matching `workspace.package.version` already set to `0.1.0` in
+   the root `Cargo.toml` since DCL-0001. No crates are published anywhere
+   (`publish = false` throughout); "pin" here means "pin this git ref/tag,"
+   not a registry version.
+
 ## Still open (deferred)
 
-- **Cross-platform CI** (`docs/07-scenarios-and-quality.md`: "CI covers
-  Linux, macOS, and Windows, with DoltLite tests explicitly gated to
-  supported platforms rather than silently skipped") has not been set up
-  yet; DCL-0003 through DCL-0006 have only been run and verified on macOS
-  (this development environment) via `cargo test --workspace` (plus the
-  `doltlite-backend` invocations above). No implementation-plan ticket has
-  yet asked for CI configuration; revisit at latest by DCL-0007 ("Consumer
-  handoff"), which will also need to teach any CI matrix about the
-  `--all-features`-incompatible feature split from point 4 above.
+- **Cross-platform CI execution**: the workflow added in this ticket has
+  only been authored and reviewed, not run — see point 3 above. The first
+  real push to a GitHub remote is the actual verification; treat any
+  failure there as a genuine, unverified-until-now gap, most likely in the
+  Windows job (`bundled` SQLite/`clap`/`axum` native builds under MSVC are
+  the least-exercised part of this whole project).
 
 Do not create a general abstraction solely to keep either answer open.
 
