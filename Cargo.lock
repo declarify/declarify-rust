@@ -765,6 +765,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3eaf3ede3fee6db1a4c2ee091bf8a8b4dccdc6d17f656fb07896ee72867612f2"
 
 [[package]]
+name = "libdoltlite-sys"
+version = "0.38.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "649ba6997dc031440a192992dbac45fa2a416974eb8ca65ada2e935f6e937521"
+dependencies = [
+ "cc",
+ "pkg-config",
+ "vcpkg",
+]
+
+[[package]]
 name = "libsqlite3-sys"
 version = "0.30.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -833,6 +844,7 @@ dependencies = [
  "declarify-core",
  "declarify-runtime",
  "reqwest",
+ "rusqdoltlite",
  "rusqlite",
  "serde",
  "serde_json",
@@ -1043,6 +1055,20 @@ dependencies = [
  "libc",
  "untrusted",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "rusqdoltlite"
+version = "0.40.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cbd11d2da78b76a2b55137cd44008e15feb6a0652b6bc11a10f44a36a9a29056"
+dependencies = [
+ "bitflags",
+ "chrono",
+ "fallible-iterator",
+ "fallible-streaming-iterator",
+ "libdoltlite-sys",
+ "smallvec",
 ]
 
 [[package]]

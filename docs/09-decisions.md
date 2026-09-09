@@ -304,14 +304,82 @@
    human-facing artifact rather than a required check, since it depends on
    `jq`/`curl` being installed.
 
+## DCL-0006 implementation choices (recorded)
+
+1. **DoltLite crate: `rusqdoltlite`**, not the lower-level `doltlite`/
+   `libdoltlite-sys` crates directly. `rusqdoltlite`'s own `Cargo.toml` sets
+   `[lib] name = "rusqlite"` — it is a genuine drop-in replacement that
+   compiles to a library registering under the **identical extern crate
+   name** as real `rusqlite` (confirmed by inspecting its manifest and
+   `src/lib.rs`: `Connection`, `Row`, `Transaction`, `params!`,
+   `Error::QueryReturnedNoRows`, `Connection::transaction`/`open`/
+   `open_in_memory`, and a `chrono` feature, all named identically to real
+   `rusqlite`). This is exactly what `docs/04-storage.md` asks for
+   ("Generated repositories use a deliberately portable SQLite-compatible
+   subset shared by both backends"): **the generated persistence code for a
+   resource did not need to change at all.** `declarify-codegen`'s
+   `persistence.rs` still renders exactly one repository
+   (`Sqlite<Name>Repository`, using `rusqlite::`), unchanged from DCL-0003.
+2. **Consequence: backend selection is a Cargo feature, not a second Rust
+   type.** Because `rusqlite` and `rusqdoltlite` link under the same extern
+   name, they are mutually exclusive within one compiled crate — enabling
+   both produces `error[E0464]: multiple candidates for rmeta dependency
+   rusqlite`, confirmed empirically while implementing this ticket (see
+   point 4). There is therefore no `DoltliteNoteRepository` type and no
+   branch in `composition.rs` choosing between two repository constructors;
+   `examples/notes/Cargo.toml` declares `rusqlite`/`rusqdoltlite` as
+   mutually-exclusive optional dependencies behind `sqlite-backend`
+   (default) / `doltlite-backend` features, and
+   `composition::open_sqlite_note_repository` (name kept — it is, and
+   remains, the "SQLite-API-shaped" repository regardless of which physical
+   engine backs it) works unchanged under either. This still satisfies
+   `docs/06-extension-model.md`'s "backend selection is handwritten
+   composition" — the choice is made in a handwritten `Cargo.toml`, external
+   to the generated tree — even though it is not the runtime/call-site choice
+   the doc's phrasing might first suggest; this is recorded here precisely
+   because the concrete mechanism turned out to differ from what DCL-0002's
+   original repository-trait design implicitly assumed.
+3. **DoltLite is gated to Linux/macOS** via `[target.'cfg(any(target_os =
+   "linux", target_os = "macos"))'.dependencies]` for the optional
+   `rusqdoltlite` dependency, matching the Step 0 platform promise already
+   recorded in this file's decisions table. `libdoltlite-sys` does expose an
+   opt-in `bundled-windows` feature upstream (discovered while investigating
+   the crate) — Step 0 deliberately does not enable it, consistent with
+   "Windows support for embedded DoltLite before upstream support exists"
+   under "Explicitly deferred decisions" below.
+4. **`cargo clippy`/`cargo test` with `--all-features` cannot be run for the
+   `notes` package** — `--all-features` activates both `sqlite-backend` and
+   `doltlite-backend` at once, hitting the exact E0464 collision from point
+   2. This is a known, common shape for crates with mutually-exclusive
+   backend features (`reqwest` itself has the same property across its TLS
+   backends). The required checks are therefore run as three invocations
+   instead of one blanket `--workspace --all-features` for this package:
+   `cargo clippy --workspace --exclude notes --all-targets --all-features`,
+   `cargo clippy -p notes --all-targets` (default = `sqlite-backend`), and
+   `cargo clippy -p notes --all-targets --no-default-features --features
+   doltlite-backend` — and the equivalent split for `cargo test`. Every
+   integration test that exercises the repository directly, plus (found to
+   also just work, unmodified) every REST and CLI test, was verified to pass
+   under `doltlite-backend` this way.
+5. **`tests/note_lifecycle_repository.rs`** (renamed from the DCL-0003
+   `note_lifecycle_sqlite.rs`) is the one conformance suite for both
+   backends — literally the same test source, run twice under different
+   `--features`, per `docs/07-scenarios-and-quality.md` scenario 5 ("without
+   regenerating domain, API, client, or CLI code and passes the same
+   lifecycle tests"). No separate `note_lifecycle_doltlite.rs` was added,
+   since there is no separate backend-specific code path left to exercise.
+
 ## Still open (deferred)
 
 - **Cross-platform CI** (`docs/07-scenarios-and-quality.md`: "CI covers
-  Linux, macOS, and Windows") has not been set up yet; DCL-0003 through
-  DCL-0005 have only been run and verified on macOS (this development
-  environment) via `cargo test --workspace`. No implementation-plan ticket
-  has yet asked for CI configuration; revisit at latest by DCL-0007
-  ("Consumer handoff").
+  Linux, macOS, and Windows, with DoltLite tests explicitly gated to
+  supported platforms rather than silently skipped") has not been set up
+  yet; DCL-0003 through DCL-0006 have only been run and verified on macOS
+  (this development environment) via `cargo test --workspace` (plus the
+  `doltlite-backend` invocations above). No implementation-plan ticket has
+  yet asked for CI configuration; revisit at latest by DCL-0007 ("Consumer
+  handoff"), which will also need to teach any CI matrix about the
+  `--all-features`-incompatible feature split from point 4 above.
 
 Do not create a general abstraction solely to keep either answer open.
 

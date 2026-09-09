@@ -14,15 +14,32 @@ path = "src/bin/notes.rs"
 name = "notes-server"
 path = "src/bin/server.rs"
 
+# `rusqlite`/`rusqdoltlite` are mutually exclusive backends for the one
+# generated persistence layer: `rusqdoltlite` declares `[lib] name =
+# "rusqlite"`, so it links under the identical extern crate name as real
+# `rusqlite` (a true drop-in replacement) — the two cannot both be active in
+# this crate at once. Backend selection therefore happens here, via Cargo
+# feature, not as a runtime choice in composition.rs. See
+# docs/09-decisions.md for the full rationale.
+[features]
+default = ["sqlite-backend"]
+sqlite-backend = ["dep:rusqlite"]
+doltlite-backend = ["dep:rusqdoltlite"]
+
 [dependencies]
 declarify.workspace = true
 declarify-core.workspace = true
 declarify-runtime.workspace = true
 serde.workspace = true
 chrono.workspace = true
-rusqlite.workspace = true
+rusqlite = { workspace = true, optional = true }
 serde_json.workspace = true
 axum.workspace = true
 reqwest.workspace = true
 clap.workspace = true
 tokio.workspace = true
+
+# DoltLite (docs/04-storage.md) is Step 0's experimental backend on
+# Linux/macOS only; the upstream crate does not support Windows by default.
+[target.'cfg(any(target_os = "linux", target_os = "macos"))'.dependencies]
+rusqdoltlite = { workspace = true, optional = true }
