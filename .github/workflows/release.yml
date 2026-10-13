@@ -38,8 +38,8 @@ jobs:
         run: |
           echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
 
-      - name: Package (Unix)
-        if: runner.os != 'Windows'
+      - name: Package (Linux)
+        if: runner.os == 'Linux'
         shell: bash
         run: |
           set -euo pipefail
@@ -47,8 +47,22 @@ jobs:
           dir="declarify-${triple}"
           mkdir -p "$dir"
           cp target/release/declarify target/release/notes target/release/notes-server "$dir/"
-          cp README.md LICENSE "$dir/"
+          cp README.md LICENSE scripts/release/install.sh "$dir/"
+          chmod +x "$dir"/declarify "$dir"/notes "$dir"/notes-server "$dir"/install.sh
           tar czf "declarify-${triple}.tar.gz" "$dir"
+
+      - name: Package (macOS)
+        if: runner.os == 'macOS'
+        shell: bash
+        run: |
+          set -euo pipefail
+          triple="${{ steps.target.outputs.triple }}"
+          dir="declarify-${triple}"
+          mkdir -p "$dir"
+          cp target/release/declarify target/release/notes target/release/notes-server "$dir/"
+          cp README.md LICENSE scripts/release/install.sh "$dir/"
+          chmod +x "$dir"/declarify "$dir"/notes "$dir"/notes-server "$dir"/install.sh
+          hdiutil create -volname "Declarify" -srcfolder "$dir" -ov -format UDZO "declarify-${triple}.dmg"
 
       - name: Package (Windows)
         if: runner.os == 'Windows'
@@ -57,7 +71,7 @@ jobs:
           $triple = "${{ steps.target.outputs.triple }}"
           $dir = "declarify-$triple"
           New-Item -ItemType Directory -Path $dir | Out-Null
-          Copy-Item target/release/declarify.exe,target/release/notes.exe,target/release/notes-server.exe,README.md,LICENSE -Destination $dir
+          Copy-Item target/release/declarify.exe,target/release/notes.exe,target/release/notes-server.exe,README.md,LICENSE,scripts/release/install.ps1 -Destination $dir
           Compress-Archive -Path $dir -DestinationPath "declarify-$triple.zip"
 
       - uses: actions/upload-artifact@v4
@@ -66,6 +80,7 @@ jobs:
           path: |
             declarify-*.tar.gz
             declarify-*.zip
+            declarify-*.dmg
           if-no-files-found: error
 
   release:

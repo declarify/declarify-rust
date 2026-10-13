@@ -496,6 +496,43 @@ explicit request. Choices:
    this commit — it's an account/repo-settings change, not something a PR
    merge does. The workflow will fail at the deploy step until that's set.
 
+## Post-handoff: per-platform release packages
+
+`.github/workflows/release.yml`'s per-OS "Package" steps now produce a
+proper installer-style artifact per platform, not just a bare archive of
+binaries, per explicit request:
+
+- **Linux**: `.tar.gz`, now also containing `scripts/release/install.sh`.
+- **macOS**: `.dmg` (via `hdiutil create -format UDZO`), not `.tar.gz` —
+  the native macOS distribution format, also containing `install.sh`.
+- **Windows**: `.zip` (unchanged format), now also containing
+  `scripts/release/install.ps1`.
+
+Both install scripts copy the three binaries onto a destination directory
+and either print a PATH hint (`install.sh`: `/usr/local/bin` if writable
+or running as root, else `~/.local/bin`) or add the destination to the
+current user's PATH directly (`install.ps1`:
+`%LOCALAPPDATA%\Declarify\bin`, via `[Environment]::SetEnvironmentVariable`
+— the standard way to persist PATH changes on Windows without a reboot).
+Both accept a `DECLARIFY_INSTALL_DIR` override. Neither requires elevated
+privileges for the default per-user install path.
+
+Verified locally before committing, not just reviewed: `shellcheck` on
+`install.sh`; an actual `hdiutil create`/`hdiutil attach` round-trip
+confirming the `.dmg` contains all expected files with correct
+executable bits; a real `tar czf`/`tar tzvf` round-trip for the `.tar.gz`
+path; `install.ps1` executed under a locally installed `pwsh` against
+fake binaries in an isolated temp directory (both the fresh-install and
+custom-`DECLARIFY_INSTALL_DIR` paths; the "already on PATH" branch could
+not be exercised faithfully outside real Windows, since .NET's per-user
+PATH persistence is Windows-registry-backed and doesn't carry the same
+meaning under `pwsh` on macOS — reviewed by inspection instead). One real
+bug was caught by this local testing and fixed before commit:
+`install.sh` originally only `mkdir -p`'d the *fallback* install directory,
+so a custom `DECLARIFY_INSTALL_DIR` pointing at a not-yet-existing (but
+perfectly creatable) directory was incorrectly treated as unwritable and
+silently redirected to `~/.local/bin`.
+
 Do not create a general abstraction solely to keep either answer open.
 
 ## Explicitly deferred decisions
