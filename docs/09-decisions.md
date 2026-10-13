@@ -437,6 +437,30 @@ promise exists to catch. Confirmed closed: the CI run after the
 `ubuntu-latest`, `macos-latest`, and `windows-latest`, including the
 `declarify check` step that had failed before. No other issue surfaced.
 
+## Post-handoff: license and release builds
+
+The repository had `license = "MIT OR Apache-2.0"` in `Cargo.toml` since
+DCL-0001 but never had a `LICENSE` file — nothing to actually license
+anything. The user asked for Apache 2.0 specifically. Added a root
+`LICENSE` with the canonical Apache License 2.0 text (fetched from
+`apache.org`, not retyped, to avoid transcription errors in a legal
+document; the only change from the canonical text is filling in the
+Appendix's `Copyright [yyyy] [name of copyright owner]` placeholder with
+`Copyright 2026 Declarify` — a reasonable default naming the GitHub
+organization, flagged to the user as easy to change if wrong). Changed
+`license` to the single SPDX identifier `"Apache-2.0"` to match — a project
+can't truthfully claim a dual MIT/Apache-2.0 license while only shipping
+one license's text, and the user's request didn't ask for MIT.
+
+Also added `.github/workflows/release.yml`: builds `declarify`, `notes`,
+and `notes-server` in release mode on all three platforms (triggered by
+pushing a `v*` tag, or manually via `workflow_dispatch` with an existing
+tag — needed to backfill releases for tags, like `v0.1.0`/`v0.1.1`,
+pushed before this workflow existed), packages each platform's binaries
+plus `README.md`/`LICENSE` into a `tar.gz` (Unix) or `.zip` (Windows)
+named by the actual `rustc`-reported host triple (not a hardcoded
+per-OS guess), and publishes them as GitHub Release assets.
+
 ## Still open (deferred)
 
 - None. All defining scenarios pass, on all three target platforms, in
