@@ -35,7 +35,8 @@ jobs:
       - name: Determine host target triple
         id: target
         shell: bash
-        run: echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
+        run: |
+          echo "triple=$(rustc -vV | sed -n 's/^host: //p')" >> "$GITHUB_OUTPUT"
 
       - name: Package (Unix)
         if: runner.os != 'Windows'
