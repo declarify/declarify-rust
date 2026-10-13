@@ -411,14 +411,36 @@
    (`publish = false` throughout); "pin" here means "pin this git ref/tag,"
    not a registry version.
 
+## Post-handoff: first real CI run (resolved)
+
+The workflow from point 3 above was pushed to `https://github.com/
+declarify/declarify-rust` and actually ran. `ubuntu-latest` and
+`macos-latest` passed outright. `windows-latest` failed, but not where
+point 3 guessed (native `bundled` builds were fine) — it failed at
+`declarify check`, reporting all 13 generated files as "differs from a
+fresh generation."
+
+**Root cause**: git's default `core.autocrlf` behavior on the Windows
+runner converted the committed (LF) generated files to CRLF on checkout.
+`declarify generate`'s fresh render still produces LF (our codegen writes
+literal `\n`, and `rustfmt`'s default `newline_style` preserves that), so
+every file's checked-out bytes differed from a fresh render by line
+endings alone — not a real content drift. **Fix**: added a repository-root
+`.gitattributes` with `* text=auto eol=lf`, forcing LF on checkout on every
+platform regardless of the cloning machine's `core.autocrlf`. No generated
+or handwritten file content needed to change; everything in the repository
+was already LF-only (verified with a CRLF grep before adding the fix).
+
+This is exactly the kind of gap `declarify check`'s own cross-platform
+promise exists to catch, now closed. No other issue surfaced; re-running
+CI after the `.gitattributes` fix is the remaining step to confirm (do not
+assume — check the actual run).
+
 ## Still open (deferred)
 
-- **Cross-platform CI execution**: the workflow added in this ticket has
-  only been authored and reviewed, not run — see point 3 above. The first
-  real push to a GitHub remote is the actual verification; treat any
-  failure there as a genuine, unverified-until-now gap, most likely in the
-  Windows job (`bundled` SQLite/`clap`/`axum` native builds under MSVC are
-  the least-exercised part of this whole project).
+- Confirm the CI run after the `.gitattributes` fix actually goes green on
+  `windows-latest` (see above) — do not treat this decisions entry as that
+  confirmation.
 
 Do not create a general abstraction solely to keep either answer open.
 

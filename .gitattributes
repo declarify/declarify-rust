@@ -1,0 +1,7 @@
+# Force LF line endings on checkout regardless of platform. Without this,
+# Windows checkouts convert committed LF files (everything in this repo,
+# including src/generated/**, is written with LF) to CRLF, which makes
+# `declarify check` report every generated file as drifted purely from line
+# endings — not a real content difference. Caught by real Windows CI
+# (docs/09-decisions.md, DCL-0007).
+* text=auto eol=lf
