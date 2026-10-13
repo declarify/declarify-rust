@@ -5,9 +5,9 @@
 Persistence is selected in handwritten composition. Domain and application
 ports do not expose backend-specific connection types or version-control APIs.
 
-Step 0 has two backends:
+There are two backends:
 
-| Backend | Purpose | Step 0 platforms |
+| Backend | Purpose | Platforms |
 | --- | --- | --- |
 | SQLite | first complete vertical path and portability baseline | Linux, macOS, Windows |
 | DoltLite | primary experiment with future versioning potential | Linux, macOS |
@@ -25,8 +25,8 @@ isolated in the adapter and must not change resource/application contracts.
 Generated repositories use a deliberately portable SQLite-compatible subset
 shared by both backends.
 
-Each resource has one table. Envelope fields use dedicated columns. Step 0 may
-store simple scalar fields as columns and nested/list/map values as canonical
+Each resource has one table. Envelope fields use dedicated columns. Declarify
+stores simple scalar fields as columns and nested/list/map values as canonical
 JSON text. Generated column names use `spec_` and `status_` prefixes.
 
 Every mutation is transactional and compares the expected revision in the SQL
@@ -43,7 +43,7 @@ generated HTTP, client, or CLI contracts.
 
 ## Migrations
 
-Step 0 supports a fresh database generated from the current resource
+Declarify supports a fresh database generated from the current resource
 configuration. General schema migration between arbitrary versions is deferred.
 
 The generator may emit deterministic bootstrap SQL/migration files for the fresh
@@ -52,5 +52,5 @@ schema, but it must not pretend to solve production migration planning.
 ## Deferred DoltLite capabilities
 
 Branches, commits, merges, diffs, history, remotes, and provenance are not
-exposed by generic CRUD in Step 0. They are introduced only after a consuming
+exposed by generic CRUD. They are introduced only after a consuming
 application defines the required semantics.

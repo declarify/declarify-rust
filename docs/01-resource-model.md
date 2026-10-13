@@ -45,14 +45,14 @@ pub type Note = declarify_core::Resource<NoteSpec, NoteStatus>;
 
 ## Resource declaration semantics
 
-Every Step 0 resource declaration must provide, in Rust code:
+Every resource declaration must provide, in Rust code:
 
 - resource name/kind;
 - API version;
 - plural route/CLI name;
 - `Spec` Rust type;
 - `Status` Rust type;
-- enabled Step 0 operations.
+- enabled operations.
 
 The declaration must not repeat field definitions from `Spec` or `Status`.
 Those fields exist only in the Rust types.
@@ -61,8 +61,8 @@ Those fields exist only in the Rust types.
 
 - Create accepts permitted metadata inputs plus `Spec`.
   Declarify assigns ID, revision, timestamps, and static type metadata.
-- Initial status is produced by `Default` in Step 0. A custom initializer is
-  deferred until a concrete scenario requires it.
+- Initial status is produced by `Default`. A custom initializer is deferred
+  until a concrete scenario requires it.
 - Replace-spec changes `Spec`, preserves `Status`, and increments revision.
 - Update-status changes `Status`, preserves `Spec`, and increments revision.
 - Replace-spec and update-status require an expected revision.
@@ -70,9 +70,9 @@ Those fields exist only in the Rust types.
 - `kind`, `apiVersion`, ID, revision, and timestamps cannot be changed through
   ordinary request payloads.
 - Delete removes the current resource. Delete history is a storage capability,
-  not part of the Step 0 resource contract.
+  not part of the resource contract.
 
-## Supported Step 0 field types
+## Supported field types
 
 The code scanner supports only a deliberately narrow local Rust type subset:
 
@@ -84,7 +84,7 @@ The code scanner supports only a deliberately narrow local Rust type subset:
 - string-keyed maps whose SQL representation is canonical JSON;
 - nested local serializable structs stored as canonical JSON.
 
-Step 0 does not attempt general Rust type resolution. Type aliases, arbitrary
+Declarify does not attempt general Rust type resolution. Type aliases, arbitrary
 generics, custom serializers, flattened application fields, and unsupported
 Serde transformations are declaration errors unless explicitly added to the
 supported subset.
@@ -97,7 +97,7 @@ and reason. Declarify never silently falls back to an opaque representation.
 Application `Spec` and `Status` types must derive or implement `serde::Serialize`
 and `serde::Deserialize`.
 
-For Step 0, the generator assumes the supported Serde subset documented by the
+The generator assumes the supported Serde subset documented by the
 scanner. The scanner must reject Serde attributes whose wire semantics it cannot
 reproduce in generated SQL/API artifacts.
 
@@ -112,5 +112,5 @@ pub struct Page<T> {
 }
 ```
 
-Step 0 guarantees stable ordering by resource ID. Filtering beyond exact
+Declarify guarantees stable ordering by resource ID. Filtering beyond exact
 metadata name or exact label matching is deferred.

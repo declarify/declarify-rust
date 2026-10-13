@@ -7,7 +7,7 @@ It does not mean runtime plugin discovery.
 
 ## Required seams
 
-| Need | Step 0 seam |
+| Need | Seam |
 | --- | --- |
 | domain validation | application validator trait/hook called by the service |
 | business behavior | handwritten service implementing the generated service trait |
@@ -33,7 +33,7 @@ It does not mean runtime plugin discovery.
 
 ## Non-goals
 
-Step 0 does not provide:
+Declarify does not provide:
 
 - a generic plugin ABI;
 - dynamic loading;
