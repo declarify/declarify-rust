@@ -432,15 +432,15 @@ or handwritten file content needed to change; everything in the repository
 was already LF-only (verified with a CRLF grep before adding the fix).
 
 This is exactly the kind of gap `declarify check`'s own cross-platform
-promise exists to catch, now closed. No other issue surfaced; re-running
-CI after the `.gitattributes` fix is the remaining step to confirm (do not
-assume — check the actual run).
+promise exists to catch. Confirmed closed: the CI run after the
+`.gitattributes` fix (run 38342708865) passed on all three platforms —
+`ubuntu-latest`, `macos-latest`, and `windows-latest`, including the
+`declarify check` step that had failed before. No other issue surfaced.
 
 ## Still open (deferred)
 
-- Confirm the CI run after the `.gitattributes` fix actually goes green on
-  `windows-latest` (see above) — do not treat this decisions entry as that
-  confirmation.
+- None. All defining scenarios pass, on all three target platforms, in
+  real CI, as of run 38342708865.
 
 Do not create a general abstraction solely to keep either answer open.
 
