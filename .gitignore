@@ -1,3 +1,7 @@
 /target
 **/*.rs.bk
 .DS_Store
+
+# mdBook build output. Built fresh by CI on every push, never committed —
+# see docs/09-decisions.md, "Post-handoff: GitHub Pages documentation site".
+/site/book/

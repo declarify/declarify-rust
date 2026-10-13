@@ -465,6 +465,37 @@ per-OS guess), and publishes them as GitHub Release assets.
 - None. All defining scenarios pass, on all three target platforms, in
   real CI, as of run 38342708865.
 
+## Post-handoff: GitHub Pages documentation site
+
+Published the `docs/*.md` specification as a static site via `mdBook`, per
+explicit request. Choices:
+
+1. **`mdBook`, not Jekyll/MkDocs/a hand-rolled generator.** It is itself a
+   Rust tool (`cargo install mdbook` or a prebuilt binary), matching this
+   project's "one language throughout" stance better than a Node/Python
+   toolchain would, and it's the standard choice for Rust-ecosystem
+   documentation (`doc.rust-lang.org/book`, the Cargo Book).
+2. **Site config lives in a dedicated `site/` directory (`site/book.toml`),
+   not at the repository root**, per explicit request for the published
+   site to have its own separate location. `book.toml` sets `src =
+   "../docs"` so the *same* `docs/*.md` files already linked from
+   `README.md` are the book's content — no second copy of the text to keep
+   in sync. The one new file, `docs/SUMMARY.md` (mdBook's required table of
+   contents), lives inside `docs/` itself, alongside the content it
+   indexes, the same way `README.md`'s own "Documentation" list already
+   does for humans.
+3. **Build output (`site/book/`) is gitignored**, generated fresh by CI on
+   every push to `main` and deployed directly via GitHub's
+   `actions/deploy-pages`, never committed — the same reasoning already
+   applied to `target/`: it's a build artifact, not a product deliverable
+   (unlike `src/generated/`, which *is* committed, because generated
+   *application* code is this project's actual product boundary, not
+   incidental build output).
+4. **Enabling Pages itself (repository Settings -> Pages -> Source: "GitHub
+   Actions") is a manual, one-time step** that has not been done as of
+   this commit — it's an account/repo-settings change, not something a PR
+   merge does. The workflow will fail at the deploy step until that's set.
+
 Do not create a general abstraction solely to keep either answer open.
 
 ## Explicitly deferred decisions
