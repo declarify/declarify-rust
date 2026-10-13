@@ -1,0 +1,17 @@
+# mdBook project for the published documentation site. The source content
+# lives in ../docs — the same numbered specification files README.md links
+# to — so there is exactly one copy of the text; this file is only
+# site-building configuration. Build output (book/) is gitignored and
+# published by CI, never committed.
+
+[book]
+title = "Declarify"
+description = "A small, opinionated Rust framework and deterministic source generator for resource-oriented applications."
+src = "../docs"
+language = "en"
+
+[output.html]
+git-repository-url = "https://github.com/declarify/declarify-rust"
+edit-url-template = "https://github.com/declarify/declarify-rust/edit/main/docs/{path}"
+default-theme = "light"
+preferred-dark-theme = "navy"
