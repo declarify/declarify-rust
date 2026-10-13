@@ -14,13 +14,13 @@ The required resource protocol is:
 
 `TypeMeta + Metadata + Spec + Status`
 
-Step 0 has one purpose: provide the smallest usable foundation for
-TabulaScripta Knowledge. It is a prototype with explicit extension boundaries,
-not a universal low-code platform and not a general control plane.
+Declarify is an early, deliberately small release: a prototype with explicit
+extension boundaries, not a universal low-code platform and not a general
+control plane.
 
 ## Non-negotiable code-first rule
 
-There is no YAML/JSON resource manifest in Step 0.
+There is no YAML/JSON resource manifest.
 
 - resource identity and enabled operations are declared in Rust code;
 - `Spec` and `Status` fields are ordinary application-owned Rust types;
@@ -55,7 +55,7 @@ declarify::resource! {
 The exact parser and macro mechanics are proven in DCL-0001, but the product
 semantics above are already decided: resource declarations live in Rust code.
 
-## Step 0 result
+## What this gives you
 
 A Rust application can:
 
@@ -69,7 +69,7 @@ A Rust application can:
 8. replace generated defaults through explicit traits/composition without
    editing generated files.
 
-Declarify does not contain TabulaScripta concepts and does not dogfood itself.
+Declarify does not dogfood itself.
 
 ## Getting started
 
@@ -92,8 +92,8 @@ SQLite or DoltLite.
 - [Decisions and open questions](docs/09-decisions.md)
 - [Implementation handoff](IMPLEMENTATION.md)
 
-These documents are the complete Step 0 specification. Every relative link in
-this list must resolve in CI.
+These documents are the complete specification. Every relative link in this
+list must resolve in CI.
 
 ## Technology baseline
 

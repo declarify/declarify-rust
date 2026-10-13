@@ -1,6 +1,6 @@
-# `notes`: the Declarify Step 0 tutorial
+# `notes`: the Declarify tutorial
 
-This is the executable specification for Declarify Step 0
+This is Declarify's executable specification
 (`../../README.md`, `../../IMPLEMENTATION.md`, `../../docs/`). It is also a
 runnable tutorial: everything below is a real command you can run from a
 fresh clone.

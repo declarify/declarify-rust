@@ -2,7 +2,7 @@
 
 ## Authoritative declaration source
 
-Step 0 resource definitions live entirely in Rust code.
+Resource definitions live entirely in Rust code.
 
 There is no `declarify.yaml`, JSON manifest, external schema file, or second
 authoring DSL.
@@ -11,7 +11,7 @@ Application-owned Rust types are authoritative for fields and serialization.
 The Declarify in-code declaration is authoritative for resource identity and
 exposure.
 
-A representative Step 0 declaration is:
+A representative declaration is:
 
 ```rust
 use serde::{Deserialize, Serialize};
@@ -70,7 +70,7 @@ The scanner:
 6. builds an internal validated schema model used by all generators.
 
 This internal schema model is an implementation detail, not an authoring format
-and not a stable public IR in Step 0.
+and not a stable public IR.
 
 Parsing arbitrary Rust is not a product goal. Unsupported type-resolution cases
 must fail with actionable diagnostics rather than trigger a larger abstraction.
@@ -90,7 +90,7 @@ declarify check [--package <name>]
 - `check` exits non-zero when committed/generated output differs from a fresh
   generation.
 
-No command accepts a resource manifest in Step 0.
+No command accepts a resource manifest.
 
 ## Determinism and safety
 
@@ -107,7 +107,7 @@ No command accepts a resource manifest in Step 0.
 
 ## Generated contract
 
-For each resource, Step 0 generates:
+For each resource, Declarify generates:
 
 - concrete resource alias and request/input types;
 - repository trait;

@@ -18,7 +18,7 @@ write spec.
 
 ## Revision transport
 
-Step 0 uses the HTTP `If-Match` header as the canonical optimistic-concurrency
+Declarify uses the HTTP `If-Match` header as the canonical optimistic-concurrency
 precondition for replace-spec, update-status, and delete.
 
 The value is the decimal resource revision quoted as an entity tag, for example:
@@ -31,7 +31,7 @@ If-Match: "7"
   `invalid_argument`;
 - a mismatched revision returns `conflict`;
 - the current resource representation contains `metadata.revision`;
-- Step 0 does not duplicate the expected revision in request JSON.
+- the expected revision is never duplicated in request JSON.
 
 ## Errors
 
@@ -75,8 +75,8 @@ notes status <id>
 notes delete <id>
 ```
 
-Step 0 supports JSON input/output as the stable automation interface. Friendly
-table rendering is optional and must not become a blocker.
+JSON input/output is the stable automation interface. Friendly table
+rendering is optional and must not become a blocker.
 
 Mutation commands require an expected revision flag or read it from a supplied
 full resource document according to the generated command contract. The CLI

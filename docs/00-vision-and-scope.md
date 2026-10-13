@@ -22,21 +22,21 @@ generate product meaning.
 
 ## Code-first source of truth
 
-Step 0 is code-first with one authoritative source: Rust code.
+Declarify is code-first with one authoritative source: Rust code.
 
 - `Spec` and `Status` structure is defined by Rust types.
 - Resource identity, plural name, API version, and enabled operations are
   declared in Rust through the Declarify declaration surface.
 - Generated SQL, REST routes, client methods, CLI commands, and schemas derive
   from those code declarations.
-- Step 0 has no resource YAML/JSON manifest and no parallel schema DSL.
+- There is no resource YAML/JSON manifest and no parallel schema DSL.
 
 A generator may use a deliberately constrained Rust scanner internally. That is
 an implementation mechanism, not a second authoring model.
 
 ## Why Rust
 
-Step 0 uses one language for the generator, framework libraries, server,
+Declarify uses one language for the generator, framework libraries, server,
 generated client, CLI, tests, and consuming application: Rust.
 
 Rust fits because Declarify is a local developer tool and an application
@@ -49,8 +49,8 @@ foundation:
 - procedural macros and deterministic source generation can coexist without
   introducing a second implementation language.
 
-Step 0 uses source generation as the primary product mechanism. A small macro or
-marker may define the resource declaration surface, but generated application
+Source generation is the primary product mechanism. A small macro or marker
+may define the resource declaration surface, but generated application
 boundaries remain concrete source files and must stay readable.
 
 ## In scope
@@ -81,11 +81,11 @@ boundaries remain concrete source files and must stay readable.
 - event sourcing;
 - database branches, merges, remote sync, or semantic diff as public framework
   features;
-- OpenAPI/GraphQL/gRPC/MCP as Step 0 deliverables;
+- OpenAPI/GraphQL/gRPC/MCP;
 - generators or runtimes for languages other than Rust;
 - runtime plugin discovery or dynamic loading;
-- TabulaScripta domain objects;
+- any specific downstream consumer's domain objects;
 - self-hosting or self-dogfooding.
 
 DoltLite-specific versioning features are intentionally deferred until a real
-TabulaScripta scenario requires them.
+downstream scenario requires them.

@@ -1,4 +1,4 @@
-# Declarify Step 0 — implementation handoff
+# Declarify — implementation handoff
 
 This file is the execution entry point for Claude Code.
 
@@ -27,10 +27,9 @@ Rust Spec/Status + in-code resource declaration
      DoltLite adapter (optional backend)
 ```
 
-The first executable resource is `Note`. The first real downstream consumer is
-TabulaScripta Knowledge.
+The first executable resource is `Note`.
 
-## Canonical Step 0 declaration
+## Canonical declaration
 
 Start DCL-0001 from this exact semantic shape:
 
@@ -82,7 +81,7 @@ CLAUDE.md
 README.md
 ```
 
-Do not split into language-specific repositories in Step 0.
+Do not split into language-specific repositories.
 
 ## DCL-0001 execution order
 

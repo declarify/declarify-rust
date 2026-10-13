@@ -12,7 +12,7 @@ Goals:
 - add the minimal crates needed for `core`, declaration marker/macro, scanner,
   codegen shell, and CLI;
 - define `NoteSpec` and `NoteStatus` in `examples/notes`;
-- declare `Note` in Rust code using the Step 0 Declarify declaration surface;
+- declare `Note` in Rust code using the Declarify declaration surface;
 - implement a constrained Rust scanner that finds resource declarations and
   resolves the referenced local `Spec`/`Status` shapes;
 - support only the initial field subset needed by the notes fixture;
@@ -92,9 +92,9 @@ same lifecycle tests.
 - verify a clean clone, validate, generate, build, server run, and CLI lifecycle;
 - verify all Markdown links;
 - verify generated drift checks;
-- tag the minimal version consumable by TabulaScripta Knowledge.
+- tag a minimal, consumable version.
 
-Exit: TabulaScripta Knowledge can pin and consume Declarify without access to
+Exit: a downstream consumer can pin and consume Declarify without access to
 prior project context.
 
 ## Do not pull forward

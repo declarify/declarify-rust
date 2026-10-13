@@ -73,8 +73,7 @@ outside it.
 `declarify-schema` is not a general Rust compiler front-end.
 
 It scans the consumer crate's Rust sources for the explicit Declarify declaration
-surface and resolves only the supported local `Spec`/`Status` shapes required by
-Step 0.
+surface and resolves only the currently supported local `Spec`/`Status` shapes.
 
 Rules:
 

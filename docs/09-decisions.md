@@ -1,6 +1,6 @@
 # Decisions and open questions
 
-## Step 0 decisions
+## Core decisions
 
 | Topic | Decision |
 | --- | --- |
@@ -13,10 +13,10 @@
 | application model | ordinary application-owned Rust `Spec` and `Status` types |
 | resource protocol | required `TypeMeta + Metadata + Spec + Status` |
 | schema extraction | constrained scan of Declarify declarations and supported local Rust types; not arbitrary Rust analysis |
-| public IR | none in Step 0; validated internal schema model is an implementation detail |
+| public IR | none currently; validated internal schema model is an implementation detail |
 | architecture | domain, application, adapters, composition |
 | operations | create/get/list/replace-spec/update-status/delete |
-| initial status | `Status: Default` in Step 0 |
+| initial status | `Status: Default` |
 | concurrency | optimistic revision check on mutations |
 | revision over HTTP | canonical `If-Match: "<revision>"`; no duplicate expected-revision JSON field |
 | REST | generated JSON API using `axum` |
@@ -24,10 +24,9 @@
 | CLI | generated `clap` commands backed by the REST client |
 | first storage path | SQLite |
 | experimental storage | DoltLite through the same application contract |
-| cross-platform promise | core/tooling and SQLite on Linux/macOS/Windows; DoltLite on Linux/macOS in Step 0 |
+| cross-platform promise | core/tooling and SQLite on Linux/macOS/Windows; DoltLite on Linux/macOS |
 | extension model | narrow traits and explicit composition; no plugin system |
 | generated ownership | one replaceable generated directory |
-| first consumer | TabulaScripta Knowledge after notes handoff |
 | self-dogfooding | no |
 
 ## DCL-0001 implementation choices (recorded)
@@ -58,7 +57,7 @@
    `src/` directory, skipping any directory literally named `generated`. This
    avoids hardcoded paths and matches the eventual multi-package generated
    layout described in `docs/02-architecture.md`.
-4. **Supported Step 0 type subset**: only `String` and `bool` fields, exactly
+4. **Supported type subset**: only `String` and `bool` fields, exactly
    as scoped by `IMPLEMENTATION.md` step 7. A `Spec`/`Status` root type must
    be a local struct with named fields; a matching local item that is an enum,
    a tuple/unit struct, ambiguous (same name found in more than one scanned
@@ -121,7 +120,7 @@
    "default services depend on repository traits, not SQL implementations"
    rule meaningful: a repository implementation never needs Declarify's ID/
    clock policy to be correct.
-5. **Generated repository/service traits are synchronous for Step 0**, not
+5. **Generated repository/service traits are currently synchronous**, not
    `async fn`. `docs/05-rest-client-cli.md` specifies an async *typed client*
    (DCL-0004+), but says nothing about the application-layer traits, and
    `rusqlite` (the still-undecided-but-likely SQLite crate) is itself
@@ -166,10 +165,10 @@
    `Sync`; wrapping it in a `Mutex` is the smallest way to satisfy the
    repository trait's `Send + Sync` bound. This serializes all access to one
    resource's table through one repository instance within a process — an
-   accepted Step 0 prototype limit (`IMPLEMENTATION.md`: "a prototype with
+   accepted prototype limit (`IMPLEMENTATION.md`: "a prototype with
    explicit extension boundaries, not a universal low-code platform"), not a
    production pooling story. A connection pool (e.g. `r2d2_sqlite`) is a
-   candidate seam if a later scenario needs it, but nothing in Step 0's
+   candidate seam if a later scenario needs it, but nothing in the current
    defining scenarios does.
 3. **`u64` revision stored as SQLite `INTEGER` via an explicit `as i64`/
    `as u64` cast at the repository boundary.** `rusqlite` does not implement
@@ -193,7 +192,7 @@
    ORDER BY id ASC LIMIT ?`), not an encoded/opaque token. `docs/01-resource-
    model.md` calls the cursor "opaque" from the API's point of view (callers
    must treat it as a black box and pass it back verbatim, never construct or
-   parse one) — Step 0 does not additionally obfuscate it. Default page size
+   parse one) — Declarify does not additionally obfuscate it. Default page size
    when `PageRequest.limit` is `None`: 50.
 6. **`labels`/`annotations` (`BTreeMap<String, String>`) are stored as
    canonical JSON text via `serde_json`**, per `docs/04-storage.md` ("nested/
@@ -212,7 +211,7 @@
    `{Name}Service` trait, not on `Default{Name}Service`, so a consumer who
    needs true non-blocking dispatch under real concurrent load can supply a
    custom service implementation without touching generated code — the
-   existing extension seam already covers it. For Step 0's defining
+   existing extension seam already covers it. For the current defining
    scenarios (a local dev tool, SQLite-backed, one client at a time in the
    tests), blocking the async task for the duration of a local SQLite call
    is an accepted prototype simplification, not a production concurrency
@@ -241,7 +240,7 @@
    `axum`, and `reqwest`.
 5. **Typed client crate: `reqwest`** (`json` feature, `rustls-tls` instead of
    the system/OpenSSL-backed default, so no system TLS library is required
-   on any of Step 0's three target platforms), paired with `tokio` in
+   on any of the three target platforms), paired with `tokio` in
    consumers for running async tests/servers. The client owns its own
    `reqwest::Client` (constructible via `new(base_url)` or
    `with_client(base_url, reqwest::Client)` for injected transport
@@ -341,10 +340,10 @@
    original repository-trait design implicitly assumed.
 3. **DoltLite is gated to Linux/macOS** via `[target.'cfg(any(target_os =
    "linux", target_os = "macos"))'.dependencies]` for the optional
-   `rusqdoltlite` dependency, matching the Step 0 platform promise already
+   `rusqdoltlite` dependency, matching the platform promise already
    recorded in this file's decisions table. `libdoltlite-sys` does expose an
    opt-in `bundled-windows` feature upstream (discovered while investigating
-   the crate) — Step 0 deliberately does not enable it, consistent with
+   the crate) — this project deliberately does not enable it, consistent with
    "Windows support for embedded DoltLite before upstream support exists"
    under "Explicitly deferred decisions" below.
 4. **`cargo clippy`/`cargo test` with `--all-features` cannot be run for the
@@ -372,7 +371,7 @@
 ## DCL-0007 implementation choices (recorded)
 
 1. **Tutorial location: `examples/notes/README.md`**, not a numbered doc
-   under `docs/`. The numbered docs are explicitly "the complete Step 0
+   under `docs/`. The numbered docs are explicitly "the complete
    specification" (root `README.md`); a runnable, command-by-command
    tutorial is a different kind of document and lives next to the code it
    walks through, in the conventional per-example-crate `README.md`
@@ -403,8 +402,8 @@
    verified locally on macOS, but Linux/Windows execution is unverified
    until it actually runs in CI (i.e. after this is pushed to a GitHub
    remote). Flag any failure there as a real finding, not a rubber stamp.
-4. **No version tag scheme existed yet**; this ticket's exit criterion
-   ("TabulaScripta Knowledge can pin and consume Declarify") needs one to
+4. **No version tag scheme existed yet**; this ticket's exit criterion (a
+   downstream consumer can pin and consume Declarify) needs one to
    pin against. Chose a plain annotated git tag, `v0.1.0`, at this ticket's
    commit — matching `workspace.package.version` already set to `0.1.0` in
    the root `Cargo.toml` since DCL-0001. No crates are published anywhere
@@ -474,9 +473,9 @@ Do not create a general abstraction solely to keep either answer open.
 - OpenAPI and other protocol generation;
 - watch/event/reconciliation semantics;
 - DoltLite branch/commit/diff/history semantics;
-- schema migrations beyond a fresh Step 0 database;
+- schema migrations beyond a fresh database;
 - authentication and authorization;
 - APIs or generated clients in other languages;
 - Windows support for embedded DoltLite before upstream support exists;
 - runtime plugin loading;
-- TabulaScripta-specific resource semantics.
+- any specific downstream consumer's resource semantics.
